@@ -21,7 +21,7 @@ public class CheckIn {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer id;
 
-    @Column(name = "created_at")
+    @Column(name = "creeated_at")
     private LocalDateTime createdAt;
 
     @OneToOne
