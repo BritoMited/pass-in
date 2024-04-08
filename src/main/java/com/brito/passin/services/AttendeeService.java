@@ -1,13 +1,15 @@
 package com.brito.passin.services;
 
 import com.brito.passin.domain.attendee.Attendee;
+import com.brito.passin.domain.attendee.exceptions.AttendeeAlreadyExistException;
+import com.brito.passin.domain.attendee.exceptions.AttendeeNotFoundException;
 import com.brito.passin.domain.checkin.CheckIn;
-import com.brito.passin.dto.attendee.AttendeeDetails;
-import com.brito.passin.dto.attendee.AttendeesListResponseDTO;
+import com.brito.passin.dto.attendee.*;
 import com.brito.passin.repositories.AttendeeReposity;
 import com.brito.passin.repositories.CheckInRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.web.util.UriComponentsBuilder;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -17,7 +19,7 @@ import java.util.Optional;
 @RequiredArgsConstructor
 public class AttendeeService {
     private final AttendeeReposity attendeeReposity;
-    private final CheckInRepository checkInRepository;
+    private final CheckInService checkInService;
 
     // o respostavel por consumir cada repositorio é
     // o service de tal repository
@@ -29,7 +31,7 @@ public class AttendeeService {
         List<Attendee> attendeeList = this.getAllAttendeesFromEvent(eventId);
 
         List<AttendeeDetails> attendeeDetailsList = attendeeList.stream().map(attendee -> {
-            Optional<CheckIn> checkIn = this.checkInRepository.findByAttendeeId(attendee.getId());
+            Optional<CheckIn> checkIn = this.checkInService.getCheckIn(attendee.getId());
             LocalDateTime checkedInAt = checkIn.isPresent() ? checkIn.get().getCreatedAt() : null;
             return new AttendeeDetails(attendee.getId(), attendee.getName(),
                     attendee.getEmail(), attendee.getCreatedAt(), checkedInAt);
@@ -37,5 +39,37 @@ public class AttendeeService {
 
         return new AttendeesListResponseDTO(attendeeDetailsList);
     }
+
+    public Attendee regirterAttendee(Attendee newAttendee){
+        this.attendeeReposity.save(newAttendee);
+
+        return newAttendee;
+    }
+
+    public void checkInAttendee(String attendeeId){
+        Attendee attendee = this.getAttendee(attendeeId);
+        this.checkInService.registerCheckIn(attendee);
+    }
+
+    private Attendee getAttendee(String attendeeId){
+        return this.attendeeReposity.findById(attendeeId).orElseThrow(() -> new AttendeeNotFoundException("Attendee not found with id: " + attendeeId));
+    }
+
+    public void verifyAttendeeSubscription(String eventId, String email){
+       Optional<Attendee> isAttendeeRegistered = this.attendeeReposity.findByEventIdAndEmail(eventId, email);
+       if(isAttendeeRegistered.isPresent()) throw new AttendeeAlreadyExistException("Attendee is already registered");
+    }
+
+    public AttendeeBadgeResponseDTO getAttendeeBadge(String attendeeId, UriComponentsBuilder uriComponentsBuilder){
+
+        Attendee attendee = this.getAttendee(attendeeId);
+
+        var uri = uriComponentsBuilder.path("/attendees/{attendeeId}/check-in").buildAndExpand(attendeeId).toUri().toString();
+
+        AttendeeBadgeDTO attendeeBadgeDTO = new AttendeeBadgeDTO(attendee.getName(), attendee.getEmail(), uri, attendee.getEvent().getId());
+
+        return new AttendeeBadgeResponseDTO(attendeeBadgeDTO);
+    }
+
 
 }

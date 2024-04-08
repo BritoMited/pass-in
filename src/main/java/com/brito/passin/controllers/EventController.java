@@ -1,5 +1,7 @@
 package com.brito.passin.controllers;
 
+import com.brito.passin.dto.attendee.AttendeeIdDTO;
+import com.brito.passin.dto.attendee.AttendeeRequestDTO;
 import com.brito.passin.dto.attendee.AttendeesListResponseDTO;
 import com.brito.passin.dto.event.EventIdDTO;
 import com.brito.passin.dto.event.EventRequestDTO;
@@ -37,6 +39,16 @@ public class EventController {
        var uri = uriComponentsBuilder.path("/events/{id}").buildAndExpand(eventIdDTO.eventId()).toUri();
 
         return ResponseEntity.created(uri).body(eventIdDTO);
+    }
+
+    @PostMapping("/{eventId}/attendees")
+    public ResponseEntity<AttendeeIdDTO> registerPartcipant(@PathVariable String eventId, @RequestBody AttendeeRequestDTO body, UriComponentsBuilder uriComponentsBuilder){
+
+        AttendeeIdDTO attendeeIdDTO = this.eventService.registerAttendeeOnEvent(eventId, body);
+
+        var uri = uriComponentsBuilder.path("/attendees/{attendeeId}/badge").buildAndExpand(attendeeIdDTO.attendeeId()).toUri();
+
+        return ResponseEntity.created(uri).body(attendeeIdDTO);
     }
 
     @GetMapping("/attendees/{id}")
